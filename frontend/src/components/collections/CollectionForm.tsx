@@ -3,7 +3,7 @@ import styles from './CollectionForm.module.css'
 import type { CollectionCreate } from '../../types/collection'
 
 interface Props {
-  onSubmit: (data: CollectionCreate) => Promise<void>
+  onSubmit: (data: CollectionCreate) => Promise<unknown>
   onClose: () => void
 }
 

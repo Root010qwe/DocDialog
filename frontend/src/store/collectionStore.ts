@@ -66,8 +66,7 @@ export const useCollectionStore = create<CollectionState>((set, get) => ({
   },
 
   uploadDocument: async (collectionId, file) => {
-    const response = await documentsApi.upload(collectionId, file)
-    // Refresh document list
+    await documentsApi.upload(collectionId, file)
     await get().fetchDocuments(collectionId)
   },
 
