@@ -1,40 +1,70 @@
-import { useAuthStore } from '../store/authStore'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../store/authStore'
+import { useCollectionStore } from '../store/collectionStore'
+import CollectionCard from '../components/collections/CollectionCard'
+import CollectionForm from '../components/collections/CollectionForm'
+import styles from './CollectionsPage.module.css'
 
 export default function CollectionsPage() {
-  const user = useAuthStore((s) => s.user)
-  const logout = useAuthStore((s) => s.logout)
+  const user = useAuthStore(s => s.user)
+  const logout = useAuthStore(s => s.logout)
   const navigate = useNavigate()
+  const { collections, loading, fetchCollections, createCollection, deleteCollection } =
+    useCollectionStore()
+  const [showForm, setShowForm] = useState(false)
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
+  useEffect(() => { fetchCollections() }, []) // eslint-disable-line
+
+  const handleLogout = () => { logout(); navigate('/login') }
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Коллекции</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ color: '#64748b', fontSize: '0.875rem' }}>{user?.email}</span>
-          <button
-            onClick={handleLogout}
-            style={{
-              padding: '0.5rem 1rem',
-              background: '#f1f5f9',
-              border: '1px solid #e2e8f0',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-            }}
-          >
-            Выйти
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <h1 className={styles.logo}>DocDialog</h1>
+        <div className={styles.userArea}>
+          <span className={styles.email}>{user?.full_name}</span>
+          <button className={styles.logoutBtn} onClick={handleLogout}>Выйти</button>
+        </div>
+      </header>
+
+      <main className={styles.main}>
+        <div className={styles.titleRow}>
+          <h2 className={styles.title}>Мои коллекции</h2>
+          <button className={styles.createBtn} onClick={() => setShowForm(true)}>
+            + Создать коллекцию
           </button>
         </div>
-      </div>
-      <p style={{ color: '#64748b' }}>
-        Коллекции документов появятся здесь. Фаза 2 в разработке.
-      </p>
+
+        {loading ? (
+          <div className={styles.loading}>Загрузка...</div>
+        ) : collections.length === 0 ? (
+          <div className={styles.empty}>
+            <div className={styles.emptyIcon}>📂</div>
+            <p>У вас пока нет коллекций.</p>
+            <button className={styles.createBtnOutline} onClick={() => setShowForm(true)}>
+              Создать первую коллекцию
+            </button>
+          </div>
+        ) : (
+          <div className={styles.grid}>
+            {collections.map(c => (
+              <CollectionCard
+                key={c.id}
+                collection={c}
+                onDelete={deleteCollection}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {showForm && (
+        <CollectionForm
+          onSubmit={createCollection}
+          onClose={() => setShowForm(false)}
+        />
+      )}
     </div>
   )
 }

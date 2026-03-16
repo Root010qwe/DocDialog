@@ -12,6 +12,13 @@ export interface Document {
   indexed_at: string | null
 }
 
+export interface DocumentUploadResponse {
+  document_file_id: string
+  document_id: string
+  status: DocumentStatus
+  message: string
+}
+
 export interface DocumentFile {
   id: string
   collection_id: string
