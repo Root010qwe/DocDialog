@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 
-from sqlalchemy import String, Text, DateTime, ForeignKey, Boolean, Enum
+from sqlalchemy import String, Text, DateTime, ForeignKey, Boolean, Enum, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -37,6 +37,13 @@ class Collection(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
+    )
+
+    # Summary cache
+    summary_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary_doc_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    summary_generated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     # Relationships

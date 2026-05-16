@@ -18,20 +18,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # --- Enums ---
-    collection_role = postgresql.ENUM(
-        "owner", "editor", "viewer", name="collection_role", create_type=True
-    )
+    # --- Enums (created explicitly, referenced with create_type=False below) ---
+    collection_role = postgresql.ENUM("owner", "editor", "viewer", name="collection_role", create_type=False)
     collection_role.create(op.get_bind(), checkfirst=True)
 
-    document_status = postgresql.ENUM(
-        "pending", "indexing", "indexed", "error", name="document_status", create_type=True
-    )
+    document_status = postgresql.ENUM("pending", "indexing", "indexed", "error", name="document_status", create_type=False)
     document_status.create(op.get_bind(), checkfirst=True)
 
-    message_role = postgresql.ENUM(
-        "user", "assistant", "system", name="message_role", create_type=True
-    )
+    message_role = postgresql.ENUM("user", "assistant", "system", name="message_role", create_type=False)
     message_role.create(op.get_bind(), checkfirst=True)
 
     # --- users ---
@@ -82,7 +76,7 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("collection_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("role", sa.Enum("owner", "editor", "viewer", name="collection_role"), nullable=False),
+        sa.Column("role", postgresql.ENUM(name="collection_role", create_type=False), nullable=False),
         sa.ForeignKeyConstraint(
             ["user_id"], ["users.id"], name="fk_roles_in_collections_user_id_users", ondelete="CASCADE"
         ),
@@ -148,7 +142,7 @@ def upgrade() -> None:
         sa.Column("language", sa.String(10), nullable=True),
         sa.Column(
             "status",
-            sa.Enum("pending", "indexing", "indexed", "error", name="document_status"),
+            postgresql.ENUM(name="document_status", create_type=False),
             nullable=False,
             server_default="pending",
         ),
@@ -223,7 +217,7 @@ def upgrade() -> None:
         sa.Column("dialog_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column(
             "role",
-            sa.Enum("user", "assistant", "system", name="message_role"),
+            postgresql.ENUM(name="message_role", create_type=False),
             nullable=False,
         ),
         sa.Column("content", sa.Text(), nullable=False),
@@ -296,6 +290,6 @@ def downgrade() -> None:
     op.drop_table("llms")
     op.drop_table("users")
 
-    op.execute("DROP TYPE IF EXISTS message_role")
-    op.execute("DROP TYPE IF EXISTS document_status")
-    op.execute("DROP TYPE IF EXISTS collection_role")
+    postgresql.ENUM(name="message_role").drop(op.get_bind(), checkfirst=True)
+    postgresql.ENUM(name="document_status").drop(op.get_bind(), checkfirst=True)
+    postgresql.ENUM(name="collection_role").drop(op.get_bind(), checkfirst=True)

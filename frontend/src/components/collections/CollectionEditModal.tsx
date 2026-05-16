@@ -1,16 +1,17 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, FolderPlus, Loader2 } from 'lucide-react'
-import type { CollectionCreate } from '../../types/collection'
+import { X, Pencil, Loader2 } from 'lucide-react'
+import type { Collection, CollectionUpdate } from '../../types/collection'
 
 interface Props {
-  onSubmit: (data: CollectionCreate) => Promise<unknown>
+  collection: Collection
+  onSave: (data: CollectionUpdate) => Promise<void>
   onClose: () => void
 }
 
-export default function CollectionForm({ onSubmit, onClose }: Props) {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
+export default function CollectionEditModal({ collection, onSave, onClose }: Props) {
+  const [name, setName] = useState(collection.name)
+  const [description, setDescription] = useState(collection.description ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -20,13 +21,11 @@ export default function CollectionForm({ onSubmit, onClose }: Props) {
     setLoading(true)
     setError('')
     try {
-      await onSubmit({ name: name.trim(), description: description.trim() || undefined })
-      onClose()
+      await onSave({ name: name.trim(), description: description.trim() || undefined })
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })
         ?.response?.data?.detail
-      setError(msg ?? 'Ошибка создания')
-    } finally {
+      setError(msg ?? 'Ошибка сохранения')
       setLoading(false)
     }
   }
@@ -51,9 +50,9 @@ export default function CollectionForm({ onSubmit, onClose }: Props) {
           <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 gradient-brand rounded-lg flex items-center justify-center">
-                <FolderPlus className="w-4 h-4 text-white" />
+                <Pencil className="w-4 h-4 text-white" />
               </div>
-              <h2 className="text-base font-semibold text-surface-900">Новая коллекция</h2>
+              <h2 className="text-base font-semibold text-surface-900">Редактировать коллекцию</h2>
             </div>
             <button
               onClick={onClose}
@@ -71,7 +70,6 @@ export default function CollectionForm({ onSubmit, onClose }: Props) {
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="Например: Дипломная работа"
                 required
                 autoFocus
                 className="w-full px-4 py-2.5 rounded-xl border border-surface-200 bg-surface-50 text-surface-900 placeholder:text-surface-400 text-sm transition-all focus:outline-none focus:border-brand-500 focus:bg-white focus:ring-3 focus:ring-brand-500/10"
@@ -85,7 +83,6 @@ export default function CollectionForm({ onSubmit, onClose }: Props) {
               <textarea
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder="Краткое описание коллекции..."
                 rows={3}
                 className="w-full px-4 py-2.5 rounded-xl border border-surface-200 bg-surface-50 text-surface-900 placeholder:text-surface-400 text-sm resize-none transition-all focus:outline-none focus:border-brand-500 focus:bg-white focus:ring-3 focus:ring-brand-500/10"
               />
@@ -110,7 +107,7 @@ export default function CollectionForm({ onSubmit, onClose }: Props) {
                 disabled={loading || !name.trim()}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Создать'}
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Сохранить'}
               </button>
             </div>
           </form>

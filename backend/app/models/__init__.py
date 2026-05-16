@@ -1,6 +1,7 @@
 from app.models.user import User
 from app.models.collection import Collection, RoleInCollection, AccessPolicy
 from app.models.llm import LLM
+from app.models.api_key import APIKey
 from app.models.document import DocumentFile, Document, DocumentChunk
 from app.models.dialog import Dialog, DialogMessage, DialogStatistics
 from app.models.query import RelevantQueryFragment
@@ -18,4 +19,5 @@ __all__ = [
     "DialogMessage",
     "DialogStatistics",
     "RelevantQueryFragment",
+    "APIKey",
 ]

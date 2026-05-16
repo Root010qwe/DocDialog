@@ -1,6 +1,6 @@
 from typing import AsyncGenerator
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,4 +31,7 @@ async def get_current_user(
         raise UnauthorizedError()
 
     auth_service = AuthService(session)
-    return await auth_service.get_user_by_id(user_id)
+    user = await auth_service.get_user_by_id(user_id)
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Аккаунт деактивирован")
+    return user

@@ -33,7 +33,6 @@ def get_qdrant() -> "_QdrantClient":
 
 
 def ensure_collection(collection_name: str) -> None:
-    """Create Qdrant collection if it doesn't exist."""
     client = get_qdrant()
     existing = {c.name for c in client.get_collections().collections}
     if collection_name not in existing:
@@ -95,7 +94,6 @@ def search(
 
 
 def delete_points_by_document(collection_name: str, document_id: str) -> None:
-    """Delete all Qdrant points belonging to a document."""
     client = get_qdrant()
     client.delete(
         collection_name=collection_name,

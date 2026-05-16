@@ -1,8 +1,8 @@
 import uuid
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.collection import Collection
+from app.models.collection import Collection, RoleInCollection
 from app.repositories.base import BaseRepository
 
 
@@ -14,6 +14,22 @@ class CollectionRepository(BaseRepository[Collection]):
         result = await self.session.execute(
             select(Collection)
             .where(Collection.owner_id == owner_id)
+            .order_by(Collection.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_accessible_by_user(self, user_id: uuid.UUID) -> list[Collection]:
+        """Return collections owned by the user OR shared with them via RoleInCollection."""
+        result = await self.session.execute(
+            select(Collection)
+            .outerjoin(RoleInCollection, RoleInCollection.collection_id == Collection.id)
+            .where(
+                or_(
+                    Collection.owner_id == user_id,
+                    RoleInCollection.user_id == user_id,
+                )
+            )
+            .distinct()
             .order_by(Collection.created_at.desc())
         )
         return list(result.scalars().all())

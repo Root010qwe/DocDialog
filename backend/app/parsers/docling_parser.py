@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Optional
 
 from app.parsers.base import AbstractParser, ParsedDocument
 
@@ -7,17 +8,27 @@ logger = logging.getLogger(__name__)
 
 DOCLING_TYPES = {
     "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/msword",
     "text/html",
     "application/xhtml+xml",
 }
 
-DOCLING_EXTENSIONS = {".pdf", ".docx", ".doc", ".html", ".htm"}
+DOCLING_EXTENSIONS = {".pdf", ".html", ".htm"}
+
+# Singleton — loaded once, reused for every document
+_converter: Optional[object] = None
+
+
+def _get_converter():
+    global _converter
+    if _converter is None:
+        from docling.document_converter import DocumentConverter
+        logger.info("Loading Docling DocumentConverter (one-time)...")
+        _converter = DocumentConverter()
+        logger.info("Docling DocumentConverter ready.")
+    return _converter
 
 
 class DoclingParser(AbstractParser):
-    """Uses Docling to extract structured text from PDF, DOCX, HTML."""
 
     def can_handle(self, content_type: str, filename: str) -> bool:
         ext = Path(filename).suffix.lower()
@@ -25,15 +36,11 @@ class DoclingParser(AbstractParser):
 
     def parse(self, file_path: str, filename: str) -> ParsedDocument:
         try:
-            from docling.document_converter import DocumentConverter
-            converter = DocumentConverter()
+            converter = _get_converter()
             result = converter.convert(file_path)
             doc = result.document
-
-            # Export to markdown for clean text extraction
             text = doc.export_to_markdown()
             title = Path(filename).stem
-
             return ParsedDocument(text=text, title=title)
 
         except Exception as e:
@@ -53,12 +60,6 @@ class DoclingParser(AbstractParser):
                         if t:
                             texts.append(t)
                 return ParsedDocument(text="\n\n".join(texts), title=title)
-
-            elif ext in (".docx", ".doc"):
-                from docx import Document
-                doc = Document(file_path)
-                paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-                return ParsedDocument(text="\n\n".join(paragraphs), title=title)
 
             elif ext in (".html", ".htm"):
                 from bs4 import BeautifulSoup

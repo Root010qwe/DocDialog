@@ -1,9 +1,11 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import LandingPage from '../pages/LandingPage'
 import LoginPage from '../pages/LoginPage'
 import RegisterPage from '../pages/RegisterPage'
 import CollectionsPage from '../pages/CollectionsPage'
 import CollectionDetailPage from '../pages/CollectionDetailPage'
+import SettingsPage from '../pages/SettingsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore(s => s.accessToken)
@@ -14,6 +16,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function AppRouter() {
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route
@@ -24,7 +27,10 @@ export default function AppRouter() {
         path="/collections/:id"
         element={<ProtectedRoute><CollectionDetailPage /></ProtectedRoute>}
       />
-      <Route path="/" element={<Navigate to="/collections" replace />} />
+      <Route
+        path="/settings"
+        element={<ProtectedRoute><SettingsPage /></ProtectedRoute>}
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

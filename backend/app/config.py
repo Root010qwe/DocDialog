@@ -44,12 +44,21 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o"
 
     # Embeddings
+    EMBEDDING_PROVIDER: Literal["sentence_transformer", "ollama"] = "sentence_transformer"
     EMBEDDING_MODEL: str = "intfloat/multilingual-e5-large"
     EMBEDDING_DIM: int = 1024
     HF_HOME: str = "/app/.model_cache"
+    OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
+    OLLAMA_EMBEDDING_TIMEOUT: int = 5
+    # Set to true when OLLAMA_EMBEDDING_MODEL is an E5-family model (e.g. mxbai-embed-large).
+    # nomic-embed-text does NOT need these prefixes; multilingual-e5 does.
+    OLLAMA_EMBEDDING_USE_E5_PREFIXES: bool = False
 
-    # Re-ranker
-    RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    # LLM timeouts
+    LLM_REQUEST_TIMEOUT: int = 30
+
+    # Re-ranker — multilingual mMARCO model (22 languages incl. Russian)
+    RERANKER_MODEL: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
 
     # JWT
     JWT_SECRET_KEY: str = "change-me-to-a-random-secret-at-least-32-chars"

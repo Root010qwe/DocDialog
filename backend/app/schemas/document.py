@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 from app.models.document import DocumentStatus
@@ -23,10 +24,13 @@ class DocumentRead(BaseModel):
     document_file_id: uuid.UUID
     collection_id: uuid.UUID
     title: str
+    description: Optional[str] = None
+    tags: Optional[list[str]] = None
     language: str | None
     status: DocumentStatus
     error_message: str | None
     chunk_count: int
+    indexing_progress: int = 0
     indexed_at: datetime | None
 
 

@@ -9,16 +9,12 @@ class TextChunk:
 
 
 class RecursiveChunker:
-    """
-    Splits text recursively by paragraphs → sentences → characters.
-    Targets ~512 tokens with ~50 token overlap.
-    Uses character-based approximation: 1 token ≈ 4 chars.
-    """
+    """Splits text recursively by paragraphs → sentences → characters; 1 token ≈ 4 chars."""
 
     def __init__(
         self,
-        chunk_size: int = 512,
-        chunk_overlap: int = 50,
+        chunk_size: int = 256,
+        chunk_overlap: int = 30,
         chars_per_token: float = 4.0,
     ):
         self.chunk_size = chunk_size
