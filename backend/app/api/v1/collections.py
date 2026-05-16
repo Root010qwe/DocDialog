@@ -37,6 +37,12 @@ async def _count_indexed_docs(session: AsyncSession, collection_id: uuid.UUID) -
     return result.scalar() or 0
 
 
+async def _with_role(collection: Collection, service: CollectionService, user: User) -> CollectionRead:
+    col_read = CollectionRead.model_validate(collection)
+    col_read.user_role = await service.get_user_role(collection, user)
+    return col_read
+
+
 @router.post("", response_model=CollectionRead, status_code=status.HTTP_201_CREATED)
 async def create_collection(
     data: CollectionCreate,
@@ -44,7 +50,8 @@ async def create_collection(
     current_user: User = Depends(get_current_user),
 ):
     service = CollectionService(session)
-    return await service.create(data, current_user)
+    col = await service.create(data, current_user)
+    return await _with_role(col, service, current_user)
 
 
 @router.get("", response_model=list[CollectionRead])
@@ -53,7 +60,8 @@ async def list_collections(
     current_user: User = Depends(get_current_user),
 ):
     service = CollectionService(session)
-    return await service.list_for_user(current_user)
+    cols = await service.list_for_user(current_user)
+    return [await _with_role(c, service, current_user) for c in cols]
 
 
 @router.get("/{collection_id}", response_model=CollectionRead)
@@ -63,7 +71,8 @@ async def get_collection(
     current_user: User = Depends(get_current_user),
 ):
     service = CollectionService(session)
-    return await service.get(collection_id, current_user)
+    col = await service.get(collection_id, current_user)
+    return await _with_role(col, service, current_user)
 
 
 @router.patch("/{collection_id}", response_model=CollectionRead)
@@ -74,7 +83,8 @@ async def update_collection(
     current_user: User = Depends(get_current_user),
 ):
     service = CollectionService(session)
-    return await service.update(collection_id, data, current_user)
+    col = await service.update(collection_id, data, current_user)
+    return await _with_role(col, service, current_user)
 
 
 @router.delete("/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)

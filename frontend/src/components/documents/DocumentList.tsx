@@ -10,9 +10,10 @@ interface Props {
   collectionId: string
   onDelete: (docId: string) => void
   onMove?: (docId: string, targetCollectionId: string) => Promise<void>
+  canManage?: boolean
 }
 
-export default function DocumentList({ documents, collectionId, onDelete, onMove }: Props) {
+export default function DocumentList({ documents, collectionId, onDelete, onMove, canManage = true }: Props) {
   const [movingDoc, setMovingDoc] = useState<Document | null>(null)
 
   if (documents.length === 0) {
@@ -72,7 +73,7 @@ export default function DocumentList({ documents, collectionId, onDelete, onMove
 
               <div className="flex items-center gap-1 flex-shrink-0">
                 <DocumentStatusBadge status={doc.status} progress={doc.indexing_progress} />
-                {onMove && (
+                {canManage && onMove && (
                   <button
                     className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all"
                     onClick={() => setMovingDoc(doc)}
@@ -81,16 +82,18 @@ export default function DocumentList({ documents, collectionId, onDelete, onMove
                     <MoveRight className="w-4 h-4" />
                   </button>
                 )}
-                <button
-                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-surface-400 hover:text-accent-rose hover:bg-red-50 transition-all"
-                  onClick={() => {
-                    if (!window.confirm(`Удалить документ «${doc.title}»? Он будет удалён из индекса.`)) return
-                    onDelete(doc.id)
-                  }}
-                  title="Удалить документ"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canManage && (
+                  <button
+                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-surface-400 hover:text-accent-rose hover:bg-red-50 transition-all"
+                    onClick={() => {
+                      if (!window.confirm(`Удалить документ «${doc.title}»? Он будет удалён из индекса.`)) return
+                      onDelete(doc.id)
+                    }}
+                    title="Удалить документ"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </motion.li>
           ))}

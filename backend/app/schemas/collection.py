@@ -23,3 +23,4 @@ class CollectionRead(BaseModel):
     qdrant_collection_name: str
     created_at: datetime
     updated_at: datetime
+    user_role: str | None = None

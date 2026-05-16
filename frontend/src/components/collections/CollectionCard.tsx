@@ -1,11 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { FolderOpen, Trash2, Calendar, ChevronRight } from 'lucide-react'
+import { FolderOpen, Trash2, Calendar, ChevronRight, Users } from 'lucide-react'
 import type { Collection } from '../../types/collection'
 
 interface Props {
   collection: Collection
   onDelete: (id: string) => void
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  editor: 'Редактор',
+  viewer: 'Наблюдатель',
 }
 
 function formatDate(iso: string): string {
@@ -29,6 +34,10 @@ function getGradient(id: string) {
 export default function CollectionCard({ collection, onDelete }: Props) {
   const navigate = useNavigate()
   const grad = getGradient(collection.id)
+  const isOwner = collection.user_role === 'owner'
+  const sharedRole = collection.user_role && collection.user_role !== 'owner'
+    ? ROLE_LABELS[collection.user_role] ?? collection.user_role
+    : null
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -55,18 +64,31 @@ export default function CollectionCard({ collection, onDelete }: Props) {
           <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-sm`}>
             <FolderOpen className="w-5 h-5 text-white" />
           </div>
-          <button
-            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-surface-400 hover:text-accent-rose hover:bg-red-50 transition-all"
-            onClick={handleDelete}
-            title="Удалить коллекцию"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {sharedRole && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-100 text-[11px] font-medium text-surface-500">
+                <Users className="w-3 h-3" />
+                {sharedRole}
+              </span>
+            )}
+            {isOwner && (
+              <button
+                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-surface-400 hover:text-accent-rose hover:bg-red-50 transition-all"
+                onClick={handleDelete}
+                title="Удалить коллекцию"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         <h3 className="font-semibold text-surface-900 text-base leading-tight mb-1 line-clamp-1">
           {collection.name}
         </h3>
+        {sharedRole && (
+          <p className="text-[11px] text-surface-400 mb-1">Поделились с вами</p>
+        )}
         {collection.description ? (
           <p className="text-sm text-surface-500 line-clamp-2 mb-3">{collection.description}</p>
         ) : (

@@ -57,6 +57,9 @@ export default function CollectionDetailPage() {
   }, [summaryLoading, summaryStartTime])
 
   const collection = collections.find(c => c.id === id)
+  const isOwner = collection?.user_role === 'owner'
+  const canEdit = isOwner
+  const canUpload = collection?.user_role !== 'viewer'
 
   useEffect(() => {
     if (collections.length === 0) fetchCollections()
@@ -205,7 +208,7 @@ export default function CollectionDetailPage() {
             <h1 className="text-sm font-semibold text-surface-900 truncate">
               {collection?.name ?? 'Коллекция'}
             </h1>
-            {!showChat && (
+            {!showChat && canEdit && (
               <button
                 onClick={() => setShowEdit(true)}
                 title="Редактировать коллекцию"
@@ -218,14 +221,16 @@ export default function CollectionDetailPage() {
 
           {!showChat && (
             <div className="flex items-center gap-2">
-              <motion.button
-                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                onClick={() => setShowShare(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-surface-600 bg-surface-100 border border-surface-200 hover:bg-surface-200 transition-all"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                Поделиться
-              </motion.button>
+              {isOwner && (
+                <motion.button
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => setShowShare(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-surface-600 bg-surface-100 border border-surface-200 hover:bg-surface-200 transition-all"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  Поделиться
+                </motion.button>
+              )}
 
               <motion.button
                 whileHover={hasIndexedDocs ? { scale: 1.03 } : {}}
@@ -392,10 +397,12 @@ export default function CollectionDetailPage() {
                 )}
               </AnimatePresence>
 
-              <section className="bg-white rounded-2xl border border-surface-200 shadow-[var(--shadow-card)] p-5">
-                <h2 className="text-sm font-semibold text-surface-700 mb-3">Загрузить документ</h2>
-                <DocumentUpload onUpload={handleUpload} />
-              </section>
+              {canUpload && (
+                <section className="bg-white rounded-2xl border border-surface-200 shadow-[var(--shadow-card)] p-5">
+                  <h2 className="text-sm font-semibold text-surface-700 mb-3">Загрузить документ</h2>
+                  <DocumentUpload onUpload={handleUpload} />
+                </section>
+              )}
 
               <section className="bg-white rounded-2xl border border-surface-200 shadow-[var(--shadow-card)] p-5">
                 <div className="flex items-center gap-2 mb-3">
@@ -417,6 +424,7 @@ export default function CollectionDetailPage() {
                     collectionId={id ?? ''}
                     onDelete={handleDelete}
                     onMove={handleMove}
+                    canManage={canUpload}
                   />
                 )}
               </section>

@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ForbiddenError
-from app.models.collection import Collection, RoleInCollection
+from app.models.collection import Collection, CollectionRole, RoleInCollection
 from app.models.user import User
 from app.repositories.collection_repo import CollectionRepository
 from app.schemas.collection import CollectionCreate, CollectionUpdate
@@ -42,16 +42,33 @@ class CollectionService:
     async def list_for_user(self, user: User) -> list[Collection]:
         return await self.repo.get_accessible_by_user(user.id)
 
-    async def _has_access(self, collection: Collection, user: User) -> bool:
+    async def _get_role(self, collection: Collection, user: User) -> CollectionRole | None:
         if collection.owner_id == user.id:
-            return True
+            return CollectionRole.owner
         result = await self.repo.session.execute(
             select(RoleInCollection).where(
                 RoleInCollection.collection_id == collection.id,
                 RoleInCollection.user_id == user.id,
             )
         )
-        return result.scalar_one_or_none() is not None
+        row = result.scalar_one_or_none()
+        return row.role if row else None
+
+    async def get_user_role(self, collection: Collection, user: User) -> str | None:
+        role = await self._get_role(collection, user)
+        return role.value if role else None
+
+    async def _has_access(self, collection: Collection, user: User) -> bool:
+        return await self._get_role(collection, user) is not None
+
+    async def require_owner(self, collection: Collection, user: User) -> None:
+        if collection.owner_id != user.id:
+            raise ForbiddenError("Только владелец может выполнить это действие")
+
+    async def require_editor_or_above(self, collection: Collection, user: User) -> None:
+        role = await self._get_role(collection, user)
+        if role is None or role == CollectionRole.viewer:
+            raise ForbiddenError("Требуются права редактора или владельца")
 
     async def get(self, collection_id: uuid.UUID, user: User) -> Collection:
         collection = await self.repo.get(collection_id)
@@ -65,6 +82,7 @@ class CollectionService:
         self, collection_id: uuid.UUID, data: CollectionUpdate, user: User
     ) -> Collection:
         collection = await self.get(collection_id, user)
+        await self.require_owner(collection, user)
         kwargs = data.model_dump(exclude_none=True)
         if not kwargs:
             return collection
@@ -72,6 +90,7 @@ class CollectionService:
 
     async def delete(self, collection_id: uuid.UUID, user: User) -> None:
         collection = await self.get(collection_id, user)
+        await self.require_owner(collection, user)
         try:
             get_qdrant().delete_collection(collection.qdrant_collection_name)
             logger.info("Deleted Qdrant collection: %s", collection.qdrant_collection_name)

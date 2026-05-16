@@ -27,6 +27,10 @@ async def create_dialog(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    from app.services.collection_service import CollectionService
+    col_service = CollectionService(session)
+    await col_service.get(data.collection_id, current_user)
+
     service = DialogService(session)
     return await service.create_dialog(data.collection_id, current_user.id)
 

@@ -73,7 +73,7 @@ export default function CollectionsPage() {
       <main className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-surface-900">Мои коллекции</h1>
+            <h1 className="text-2xl font-bold text-surface-900">Коллекции</h1>
             <p className="text-sm text-surface-500 mt-1">
               {loading ? 'Загрузка...' : `${collections.length} коллекци${collections.length === 1 ? 'я' : collections.length < 5 ? 'и' : 'й'}`}
             </p>

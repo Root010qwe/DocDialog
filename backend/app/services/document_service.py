@@ -29,7 +29,8 @@ class DocumentService:
         tags: list[str] | None = None,
     ) -> tuple:
         col_service = CollectionService(self.session)
-        await col_service.get(collection_id, user)
+        collection = await col_service.get(collection_id, user)
+        await col_service.require_editor_or_above(collection, user)
 
         file_id = uuid.uuid4()
         upload_dir = Path(settings.STORAGE_PATH) / "uploads" / str(collection_id)
@@ -92,7 +93,9 @@ class DocumentService:
 
         col_service = CollectionService(self.session)
         source_collection = await col_service.get(doc.collection_id, user)
+        await col_service.require_editor_or_above(source_collection, user)
         target_collection = await col_service.get(target_collection_id, user)
+        await col_service.require_editor_or_above(target_collection, user)
 
         if source_collection.id == target_collection.id:
             return  # no-op
@@ -125,6 +128,7 @@ class DocumentService:
 
         col_service = CollectionService(self.session)
         collection = await col_service.get(doc.collection_id, user)
+        await col_service.require_editor_or_above(collection, user)
 
         from app.vector_store.qdrant_client import delete_points_by_document
         delete_points_by_document(collection.qdrant_collection_name, str(document_id))
