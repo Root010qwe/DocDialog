@@ -25,12 +25,12 @@ class DocumentService:
         collection_id: uuid.UUID,
         file: UploadFile,
         user: User,
+        description: str | None = None,
+        tags: list[str] | None = None,
     ) -> tuple:
-        # Verify collection access
         col_service = CollectionService(self.session)
         await col_service.get(collection_id, user)
 
-        # Save file to disk
         file_id = uuid.uuid4()
         upload_dir = Path(settings.STORAGE_PATH) / "uploads" / str(collection_id)
         upload_dir.mkdir(parents=True, exist_ok=True)
@@ -44,7 +44,6 @@ class DocumentService:
 
         content_type = file.content_type or "application/octet-stream"
 
-        # Create DocumentFile record
         doc_file = await self.file_repo.create(
             collection_id=collection_id,
             original_filename=file.filename or "unknown",
@@ -54,11 +53,12 @@ class DocumentService:
             uploaded_by=user.id,
         )
 
-        # Create Document record (pending)
         document = await self.doc_repo.create(
             document_file_id=doc_file.id,
             collection_id=collection_id,
             title=Path(file.filename or "unknown").stem,
+            description=description,
+            tags=tags,
             status=DocumentStatus.pending,
         )
 
@@ -79,6 +79,45 @@ class DocumentService:
         await col_service.get(doc.collection_id, user)
         return doc
 
+    async def move_document(
+        self,
+        document_id: uuid.UUID,
+        target_collection_id: uuid.UUID,
+        user: User,
+    ) -> None:
+        """Move a document to another collection and re-trigger indexing."""
+        doc = await self.doc_repo.get_with_chunks(document_id)
+        if not doc:
+            raise NotFoundError("Document not found")
+
+        col_service = CollectionService(self.session)
+        source_collection = await col_service.get(doc.collection_id, user)
+        target_collection = await col_service.get(target_collection_id, user)
+
+        if source_collection.id == target_collection.id:
+            return  # no-op
+
+        from app.vector_store.qdrant_client import delete_points_by_document
+        delete_points_by_document(source_collection.qdrant_collection_name, str(document_id))
+
+        for chunk in doc.chunks:
+            await self.session.delete(chunk)
+        await self.session.flush()
+
+        doc_file = await self.file_repo.get(doc.document_file_id)
+        if doc_file:
+            doc_file.collection_id = target_collection_id
+            self.session.add(doc_file)
+
+        doc.collection_id = target_collection_id
+        doc.status = DocumentStatus.pending
+        doc.chunk_count = 0
+        doc.indexing_progress = 0
+        doc.indexed_at = None
+        doc.error_message = None
+        self.session.add(doc)
+        await self.session.commit()
+
     async def delete_document(self, document_id: uuid.UUID, user: User) -> None:
         doc = await self.doc_repo.get_with_chunks(document_id)
         if not doc:
@@ -87,11 +126,9 @@ class DocumentService:
         col_service = CollectionService(self.session)
         collection = await col_service.get(doc.collection_id, user)
 
-        # Remove Qdrant points
         from app.vector_store.qdrant_client import delete_points_by_document
         delete_points_by_document(collection.qdrant_collection_name, str(document_id))
 
-        # Remove file from disk
         doc_file = await self.file_repo.get(doc.document_file_id)
         if doc_file and os.path.exists(doc_file.file_path):
             os.remove(doc_file.file_path)

@@ -8,10 +8,24 @@ from app.models.document import DocumentStatus
 
 logger = logging.getLogger(__name__)
 
+# Progress checkpoints (%)
+_P_START = 0
+_P_PARSED = 15
+_P_CHUNKED = 25
+_P_EMBED_START = 25
+_P_EMBED_END = 82
+_P_QDRANT = 92
+_P_DB = 97
+_P_DONE = 100
+
 
 class IndexingService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    async def _set_progress(self, doc_repo, document, pct: int) -> None:
+        await doc_repo.update(document, indexing_progress=pct)
+        await self.session.commit()
 
     async def index_document(self, document_file_id: str) -> None:
         from app.repositories.document_repo import DocumentFileRepository, DocumentRepository, DocumentChunkRepository
@@ -29,7 +43,6 @@ class IndexingService:
 
         file_id = uuid.UUID(document_file_id)
 
-        # 1. Load records
         doc_file = await file_repo.get(file_id)
         if not doc_file:
             logger.error("DocumentFile not found: %s", document_file_id)
@@ -45,39 +58,54 @@ class IndexingService:
             logger.error("Collection not found: %s", doc_file.collection_id)
             return
 
-        # 2. Mark as indexing
-        await doc_repo.update(document, status=DocumentStatus.indexing)
+        await doc_repo.update(document, status=DocumentStatus.indexing, indexing_progress=_P_START)
         await self.session.commit()
 
         try:
-            # 3. Parse
             parser = ParserFactory.get(doc_file.content_type, doc_file.original_filename)
             parsed = parser.parse(doc_file.file_path, doc_file.original_filename)
 
             if not parsed.text.strip():
                 raise ValueError("Parser returned empty text")
 
-            # Update title if parser extracted a better one
             if parsed.title:
                 await doc_repo.update(document, title=parsed.title)
 
-            # 4. Chunk
-            chunker = RecursiveChunker()
+            await self._set_progress(doc_repo, document, _P_PARSED)
+
+            # Speaker-labelled transcripts use a turn-aware chunker to keep Q&A pairs together.
+            from app.chunkers.transcript_chunker import TranscriptChunker, is_transcript
+            if is_transcript(parsed.text):
+                logger.info("Transcript format detected — using TranscriptChunker")
+                chunker = TranscriptChunker(turns_per_chunk=3, overlap_turns=1)
+            else:
+                chunker = RecursiveChunker(chunk_size=512, chunk_overlap=64)
             chunks = chunker.chunk(parsed.text)
             logger.info("Document %s split into %d chunks", document.id, len(chunks))
 
             if not chunks:
                 raise ValueError("No chunks produced")
 
-            # 5. Embed (batch)
+            await self._set_progress(doc_repo, document, _P_CHUNKED)
+
             embedder = get_embedder()
             texts = [c.text for c in chunks]
-            vectors = embedder.encode_passages(texts, batch_size=32)
+            embed_batch = 32
+            all_vectors: list = []
 
-            # 6. Ensure Qdrant collection exists
+            for batch_start in range(0, len(texts), embed_batch):
+                batch = texts[batch_start: batch_start + embed_batch]
+                vecs = embedder.encode_passages(batch, batch_size=embed_batch)
+                all_vectors.extend(vecs)
+
+                done_ratio = min((batch_start + len(batch)) / len(texts), 1.0)
+                pct = _P_EMBED_START + int((_P_EMBED_END - _P_EMBED_START) * done_ratio)
+                await self._set_progress(doc_repo, document, pct)
+
+            vectors = all_vectors
+
             ensure_collection(collection.qdrant_collection_name)
 
-            # 7. Build Qdrant points + DB records
             qdrant_points = []
             db_chunk_records = []
 
@@ -103,21 +131,23 @@ class IndexingService:
                     "qdrant_point_id": point_id,
                 })
 
-            # 8. Upsert to Qdrant in batches of 100
+            # DB insert before Qdrant upsert: Qdrant point_ids must reference existing chunks.
+            await chunk_repo.bulk_create(db_chunk_records)
+            await self._set_progress(doc_repo, document, _P_DB)
+
             batch_size = 100
             for start in range(0, len(qdrant_points), batch_size):
                 upsert_points(
                     collection.qdrant_collection_name,
-                    qdrant_points[start:start + batch_size],
+                    qdrant_points[start: start + batch_size],
                 )
 
-            # 9. Save chunks to DB
-            await chunk_repo.bulk_create(db_chunk_records)
+            await self._set_progress(doc_repo, document, _P_QDRANT)
 
-            # 10. Mark as indexed
             await doc_repo.update(
                 document,
                 status=DocumentStatus.indexed,
+                indexing_progress=_P_DONE,
                 chunk_count=len(chunks),
                 indexed_at=datetime.now(timezone.utc),
             )
