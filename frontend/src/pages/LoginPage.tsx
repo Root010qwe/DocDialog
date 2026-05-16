@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Mail, Lock, LogIn, FileText, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, LogIn, FileText, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { authApi } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
 
@@ -43,6 +43,14 @@ export default function LoginPage() {
         <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-brand-500/5 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-accent-violet/5 blur-3xl" />
       </div>
+
+      <Link
+        to="/"
+        className="absolute top-6 left-6 flex items-center gap-1.5 text-sm text-surface-500 hover:text-surface-700 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        На главную
+      </Link>
 
       <motion.div
         initial={{ opacity: 0, y: 24 }}

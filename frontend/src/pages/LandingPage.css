@@ -211,14 +211,44 @@ html { scroll-behavior: smooth; }
 }
 .landing-page .ld-hero-anim {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 12px;
 }
 .landing-page .ld-anim-wrap {
   width: 340px; height: 480px;
   position: relative;
 }
 .landing-page .ld-anim-wrap svg { width: 100%; height: 100%; overflow: visible; }
+
+.landing-page .ld-anim-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.landing-page .ld-anim-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1.5px solid var(--s-200);
+  background: white;
+  color: var(--s-500);
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+.landing-page .ld-anim-btn:hover {
+  border-color: var(--brand-400);
+  color: var(--brand-600);
+  background: var(--brand-50, #eef2ff);
+  box-shadow: 0 2px 8px rgba(59,91,219,0.12);
+}
+.landing-page .ld-anim-btn:active {
+  transform: scale(0.94);
+}
 
 /* ================================================================
    HERO SVG CLASSES

@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Increment to bust Railway's build cache (forces full rebuild without baked-in ML models)
+ARG CACHEBUST=2
+
 WORKDIR /app
 
 # Install system deps for docling, pdfplumber, python-magic
@@ -15,13 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download embedding & reranker models to avoid cold start in production
 ENV HF_HOME=/app/.model_cache
-RUN python -c "\
-from sentence_transformers import SentenceTransformer, CrossEncoder; \
-SentenceTransformer('intfloat/multilingual-e5-large'); \
-CrossEncoder('cross-encoder/mmarco-mMiniLMv2-L12-H384-v1') \
-"
 
 COPY . .
 

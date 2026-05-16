@@ -35,13 +35,18 @@ class Settings(BaseSettings):
     QDRANT_API_KEY: str = ""
 
     # LLM Provider
-    LLM_PROVIDER: Literal["ollama", "openai"] = "ollama"
+    LLM_PROVIDER: Literal["ollama", "openai", "groq"] = "ollama"
 
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.1:8b"
 
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o"
+
+    # Groq (OpenAI-compatible, free tier)
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
 
     # Embeddings
     EMBEDDING_PROVIDER: Literal["sentence_transformer", "ollama"] = "sentence_transformer"

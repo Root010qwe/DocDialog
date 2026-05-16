@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import './LandingPage.css'
@@ -6,6 +6,7 @@ import './LandingPage.css'
 export default function LandingPage() {
   const token = useAuthStore(s => s.accessToken)
   const navigate = useNavigate()
+  const navigatePhaseRef = useRef<((delta: number) => void) | null>(null)
 
   useEffect(() => {
     if (token) navigate('/collections', { replace: true })
@@ -13,13 +14,29 @@ export default function LandingPage() {
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = []
+    const resolvers: Array<() => void> = []
     let cancelled = false
     let tokenLoopRunning = false
+    let pendingJump: number | null = null
+    let currentPhaseIdx = 0
+
+    const abortSleeps = () => {
+      timers.forEach(clearTimeout)
+      timers.length = 0
+      const rs = resolvers.splice(0)
+      rs.forEach(r => r())
+    }
 
     const sleep = (ms: number) =>
       new Promise<void>(resolve => {
-        if (cancelled) { resolve(); return }
-        timers.push(setTimeout(resolve, ms))
+        if (cancelled || pendingJump !== null) { resolve(); return }
+        const id = setTimeout(() => {
+          const idx = resolvers.indexOf(resolve)
+          if (idx >= 0) resolvers.splice(idx, 1)
+          resolve()
+        }, ms)
+        timers.push(id)
+        resolvers.push(resolve)
       })
 
     const reveals = document.querySelectorAll<Element>(
@@ -184,7 +201,7 @@ export default function LandingPage() {
 
     const startTokenParticles = async () => {
       tokenLoopRunning = true; let i = 0
-      while (tokenLoopRunning && !cancelled) {
+      while (tokenLoopRunning && !cancelled && pendingJump === null) {
         const tok = p4Toks[i % p4Toks.length]
         if (tok) {
           const drift = (Math.random() - 0.5) * 24
@@ -238,24 +255,41 @@ export default function LandingPage() {
       { step: 'ШАГ 04 · 04', name: 'LLM → ответ',      sub: 'Ollama / OpenAI · stream SSE',      run: runPhase4 },
     ]
 
+    const showPhase = (i: number) => {
+      const p = PHASES[i]
+      if (stepEl) stepEl.textContent = p.step
+      if (nameEl) nameEl.textContent = p.name
+      if (subEl)  subEl.textContent  = p.sub
+      progDots.forEach((d, j) => {
+        d?.classList.toggle('done',   j < i)
+        d?.classList.toggle('active', j === i)
+      })
+      phaseEls.forEach((el, j) => el?.classList.toggle('is-active', j === i))
+    }
+
     const runHeroLoop = async () => {
       while (!cancelled) {
-        for (let i = 0; i < PHASES.length; i++) {
-          if (cancelled) return
-          const p = PHASES[i]
-          if (stepEl) stepEl.textContent = p.step
-          if (nameEl) nameEl.textContent = p.name
-          if (subEl)  subEl.textContent  = p.sub
-          progDots.forEach((d, j) => {
-            d?.classList.toggle('done',   j < i)
-            d?.classList.toggle('active', j === i)
-          })
-          phaseEls.forEach((el, j) => el?.classList.toggle('is-active', j === i))
-          await sleep(550)
-          await p.run()
-          await sleep(450)
+        if (pendingJump !== null) {
+          currentPhaseIdx = pendingJump
+          pendingJump = null
+          tokenLoopRunning = false
+        }
+        if (cancelled) return
+        showPhase(currentPhaseIdx)
+        await sleep(550)
+        await PHASES[currentPhaseIdx].run()
+        await sleep(600)
+        if (pendingJump === null) {
+          currentPhaseIdx = (currentPhaseIdx + 1) % PHASES.length
         }
       }
+    }
+
+    navigatePhaseRef.current = (delta: number) => {
+      const target = ((currentPhaseIdx + delta) % PHASES.length + PHASES.length) % PHASES.length
+      pendingJump = target
+      tokenLoopRunning = false
+      abortSleeps()
     }
 
     timers.push(setTimeout(runHeroLoop, 600))
@@ -264,8 +298,10 @@ export default function LandingPage() {
       cancelled = true
       tokenLoopRunning = false
       timers.forEach(clearTimeout)
+      resolvers.length = 0
       revealIO.disconnect()
       counterIO.disconnect()
+      navigatePhaseRef.current = null
     }
   }, [])
 
@@ -331,8 +367,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="ld-hero-anim" data-reveal data-delay="2" aria-hidden="true">
-            <div className="ld-anim-wrap">
+          <div className="ld-hero-anim" data-reveal data-delay="2">
+            <div className="ld-anim-wrap" aria-hidden="true">
               <svg viewBox="0 0 340 480" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <linearGradient id="ld-anim-grad-brand" x1="0" y1="0" x2="1" y2="1">
@@ -608,6 +644,26 @@ export default function LandingPage() {
                   </g>
                 </g>
               </svg>
+            </div>
+            <div className="ld-anim-controls">
+              <button
+                className="ld-anim-btn"
+                onClick={() => navigatePhaseRef.current?.(-1)}
+                title="Предыдущий шаг"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+              </button>
+              <button
+                className="ld-anim-btn"
+                onClick={() => navigatePhaseRef.current?.(1)}
+                title="Следующий шаг"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
             </div>
           </div>
         </div>

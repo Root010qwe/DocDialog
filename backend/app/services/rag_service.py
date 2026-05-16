@@ -131,6 +131,14 @@ class RAGService:
                 temperature=temperature,
                 timeout=settings.LLM_REQUEST_TIMEOUT,
             )
+        elif settings.LLM_PROVIDER == "groq":
+            return ChatOpenAI(
+                api_key=settings.GROQ_API_KEY,
+                model=settings.GROQ_MODEL,
+                base_url=settings.GROQ_BASE_URL,
+                temperature=temperature,
+                timeout=settings.LLM_REQUEST_TIMEOUT,
+            )
         raise ValueError(f"Unknown LLM provider: {settings.LLM_PROVIDER}")
 
     async def generate_streaming_response(
