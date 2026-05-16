@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from dataclasses import dataclass
@@ -44,6 +45,28 @@ class CrossEncoderReranker:
         pairs = [(query, p["text"]) for p in passages]
         scores = self.model.predict(pairs)
 
+        scored = [
+            ScoredPassage(
+                text=p["text"],
+                score=float(scores[i]),
+                original_index=i,
+                metadata=p.get("metadata", {}),
+            )
+            for i, p in enumerate(passages)
+        ]
+        scored.sort(key=lambda x: x.score, reverse=True)
+        return scored[:top_k]
+
+    async def rerank_async(
+        self,
+        query: str,
+        passages: list[dict],
+        top_k: int = 5,
+    ) -> list[ScoredPassage]:
+        if not passages:
+            return []
+        pairs = [(query, p["text"]) for p in passages]
+        scores = await asyncio.to_thread(self.model.predict, pairs)
         scored = [
             ScoredPassage(
                 text=p["text"],

@@ -15,6 +15,11 @@ class MessageRole(str, PyEnum):
     system = "system"
 
 
+class MessageRating(str, PyEnum):
+    positive = "positive"
+    negative = "negative"
+
+
 class Dialog(Base):
     __tablename__ = "dialogs"
 
@@ -77,6 +82,9 @@ class DialogMessage(Base):
         nullable=False,
     )
     token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rating: Mapped[MessageRating | None] = mapped_column(
+        Enum(MessageRating, name="message_rating"), nullable=True
+    )
 
     # Relationships
     dialog: Mapped["Dialog"] = relationship("Dialog", back_populates="messages")

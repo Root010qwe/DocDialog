@@ -5,10 +5,13 @@ export interface Document {
   document_file_id: string
   collection_id: string
   title: string
+  description?: string | null
+  tags?: string[] | null
   language: string | null
   status: DocumentStatus
   error_message: string | null
   chunk_count: number
+  indexing_progress: number
   indexed_at: string | null
 }
 

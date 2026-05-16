@@ -12,6 +12,15 @@ export interface Citation {
   section_title: string | null
 }
 
+/** SSECitation matches the backend SSE contract exactly (sent in the "citations" event). */
+export interface SSECitation {
+  chunk_id: string
+  document_title: string
+  chunk_text: string
+  similarity_score: number
+  rerank_score: number | null
+}
+
 export interface DialogMessage {
   id: string
   dialog_id: string
@@ -19,6 +28,7 @@ export interface DialogMessage {
   content: string
   created_at: string
   token_count: number | null
+  rating?: 'positive' | 'negative' | null
   citations?: Citation[]
 }
 

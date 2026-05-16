@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { collectionsApi } from '../api/collections'
 import { documentsApi } from '../api/documents'
-import type { Collection, CollectionCreate } from '../types/collection'
+import type { Collection, CollectionCreate, CollectionUpdate } from '../types/collection'
 import type { Document } from '../types/document'
 
 interface CollectionState {
@@ -13,13 +13,15 @@ interface CollectionState {
 
   fetchCollections: () => Promise<void>
   createCollection: (data: CollectionCreate) => Promise<Collection>
+  updateCollection: (id: string, data: CollectionUpdate) => Promise<void>
   deleteCollection: (id: string) => Promise<void>
   setActiveCollection: (id: string) => void
 
   fetchDocuments: (collectionId: string) => Promise<void>
-  uploadDocument: (collectionId: string, file: File) => Promise<void>
+  uploadDocument: (collectionId: string, file: File, description?: string, tags?: string[]) => Promise<void>
+  moveDocument: (collectionId: string, documentId: string, targetCollectionId: string) => Promise<void>
   deleteDocument: (collectionId: string, documentId: string) => Promise<void>
-  pollDocumentStatus: (collectionId: string, documentId: string) => void
+  reset: () => void
 }
 
 export const useCollectionStore = create<CollectionState>((set, get) => ({
@@ -28,6 +30,15 @@ export const useCollectionStore = create<CollectionState>((set, get) => ({
   documents: [],
   loading: false,
   documentsLoading: false,
+
+  reset: () =>
+    set({
+      collections: [],
+      activeCollectionId: null,
+      documents: [],
+      loading: false,
+      documentsLoading: false,
+    }),
 
   fetchCollections: async () => {
     set({ loading: true })
@@ -45,6 +56,13 @@ export const useCollectionStore = create<CollectionState>((set, get) => ({
     return collection
   },
 
+  updateCollection: async (id, data) => {
+    const updated = await collectionsApi.update(id, data)
+    set(state => ({
+      collections: state.collections.map(c => c.id === id ? updated : c),
+    }))
+  },
+
   deleteCollection: async (id) => {
     await collectionsApi.delete(id)
     set(state => ({
@@ -56,18 +74,24 @@ export const useCollectionStore = create<CollectionState>((set, get) => ({
   setActiveCollection: (id) => set({ activeCollectionId: id }),
 
   fetchDocuments: async (collectionId) => {
-    set({ documentsLoading: true })
+    set({ documentsLoading: true, activeCollectionId: collectionId })
     try {
       const documents = await documentsApi.list(collectionId)
-      set({ documents })
+      if (get().activeCollectionId === collectionId) {
+        set({ documents })
+      }
     } finally {
       set({ documentsLoading: false })
     }
   },
 
-  uploadDocument: async (collectionId, file) => {
-    const response = await documentsApi.upload(collectionId, file)
-    // Refresh document list
+  uploadDocument: async (collectionId, file, description, tags) => {
+    await documentsApi.upload(collectionId, file, description, tags)
+    await get().fetchDocuments(collectionId)
+  },
+
+  moveDocument: async (collectionId, documentId, targetCollectionId) => {
+    await documentsApi.move(collectionId, documentId, targetCollectionId)
     await get().fetchDocuments(collectionId)
   },
 
@@ -78,19 +102,4 @@ export const useCollectionStore = create<CollectionState>((set, get) => ({
     }))
   },
 
-  pollDocumentStatus: (collectionId, documentId) => {
-    const interval = setInterval(async () => {
-      try {
-        const doc = await documentsApi.get(collectionId, documentId)
-        set(state => ({
-          documents: state.documents.map(d => d.id === documentId ? doc : d),
-        }))
-        if (doc.status === 'indexed' || doc.status === 'error') {
-          clearInterval(interval)
-        }
-      } catch {
-        clearInterval(interval)
-      }
-    }, 3000)
-  },
 }))
