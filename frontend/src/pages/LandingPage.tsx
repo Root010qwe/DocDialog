@@ -342,8 +342,8 @@ export default function LandingPage() {
               ВКР&nbsp;·&nbsp;МГТУ им. Баумана&nbsp;·&nbsp;2026
             </div>
             <h1 data-reveal data-delay="1">
-              Диалог с<br />документами.<br />
-              <span className="ld-grad">По-настоящему.</span>
+            Интеллектуальная <br />система<br />
+              <span className="ld-grad">диалогового анализа документов.</span>
             </h1>
             <p className="ld-hero-sub" data-reveal data-delay="2">
               Self-hosted RAG-система: загрузите документы, задайте вопрос — получите ответ
